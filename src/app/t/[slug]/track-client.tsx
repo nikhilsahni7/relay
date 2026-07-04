@@ -102,6 +102,7 @@ export function TrackClient({
                     baton.card ?? { summary: "", items: [], links: [] }
                   }
                   author={baton.author_name}
+                  role={baton.author_role}
                   createdAt={baton.created_at}
                   audioUrl={baton.audio_url}
                   durationSeconds={baton.duration_seconds}

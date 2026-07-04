@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   // Gather batons in the window (chronological, so the recap reads in order).
   let query = supabase
     .from("batons")
-    .select("author_name, card, created_at")
+    .select("author_name, author_role, card, created_at")
     .eq("team_id", teamId)
     .order("created_at", { ascending: true });
   if (since) query = query.gt("created_at", since);
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const { data: batonsData } = await query;
   const batons = (batonsData as Pick<
     Baton,
-    "author_name" | "card" | "created_at"
+    "author_name" | "author_role" | "card" | "created_at"
   >[]) ?? [];
 
   if (batons.length === 0) {

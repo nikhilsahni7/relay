@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
   const teamSlug = String(form.get("team_slug") ?? "").trim();
   const authorName = String(form.get("author_name") ?? "").trim();
+  const authorRole = String(form.get("author_role") ?? "").trim().slice(0, 40);
   const text = String(form.get("text") ?? "").trim();
   const audio = form.get("audio");
   const durationRaw = Number(form.get("duration_seconds") ?? 0);
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
       .insert({
         team_id: teamId,
         author_name: authorName,
+        author_role: authorRole || null,
         audio_url: audioUrl,
         transcript,
         card,

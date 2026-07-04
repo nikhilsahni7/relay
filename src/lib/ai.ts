@@ -246,17 +246,23 @@ summary, and status items. Write what you'd SAY to someone who just sat down:
 - Mention who did what when it helps ("Ana shipped..., but the deploy's blocked").
 - No preamble ("here's your recap"), no markdown, no lists. Just spoken prose.`;
 
-type RecapBaton = Pick<Baton, "author_name" | "card" | "created_at">;
+type RecapBaton = Pick<
+  Baton,
+  "author_name" | "author_role" | "card" | "created_at"
+>;
 
 function serializeBatons(batons: RecapBaton[]): string {
   return batons
     .map((b, i) => {
       const card = b.card;
       if (!card) return "";
+      const who = b.author_role
+        ? `${b.author_name} (${b.author_role})`
+        : b.author_name;
       const items = card.items
         .map((it) => `  - ${it.kind}: ${it.text}`)
         .join("\n");
-      return `Handoff ${i + 1} — ${b.author_name}:\n  summary: ${
+      return `Handoff ${i + 1} — ${who}:\n  summary: ${
         card.summary
       }${items ? `\n${items}` : ""}`;
     })

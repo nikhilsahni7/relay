@@ -12,12 +12,16 @@ create table if not exists batons (
   id uuid primary key default gen_random_uuid(),
   team_id uuid not null references teams(id) on delete cascade,
   author_name text not null,
+  author_role text, -- optional: "Frontend", "On-call", "PM" — adds handoff context
   audio_url text,
   transcript text,
   card jsonb, -- BatonCard: { summary, items: [{kind, text}], links: [{label, url}] }
   duration_seconds int,
   created_at timestamptz not null default now()
 );
+
+-- If the batons table already exists, run this once to add the role column:
+--   alter table batons add column if not exists author_role text;
 
 create index if not exists batons_team_created_idx on batons (team_id, created_at desc);
 

@@ -15,6 +15,7 @@ import type { Baton } from "@/lib/types";
 const EASE = [0.22, 1, 0.36, 1] as const;
 const MAX_SECONDS = 120;
 const AUTHOR_KEY = "relay:author";
+const ROLE_KEY = "relay:role";
 
 type Phase = "idle" | "recording" | "processing" | "confirm";
 
@@ -39,19 +40,25 @@ export function PassOverlay({
 }: PassOverlayProps) {
   const reduce = useReducedMotion();
   const recorder = useRecorder(MAX_SECONDS);
-  const { status, seconds, levels, blob, error, start, stop, reset } = recorder;
+  const { status, seconds, levels, blob, error, start, stop, reset, cancel } =
+    recorder;
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [author, setAuthor] = useState("");
+  const [role, setRole] = useState("");
   const [textMode, setTextMode] = useState(false);
   const [text, setText] = useState("");
   const [baton, setBaton] = useState<Baton | null>(null);
   const submittingRef = useRef(false);
+  // Set when the user bails out (✕ / Esc) so a MediaRecorder.onstop that fires
+  // *after* close doesn't sneak a baton into the DB.
+  const abortRef = useRef(false);
 
-  // Load the remembered author name.
+  // Load the remembered author name + role.
   useEffect(() => {
     if (typeof window === "undefined") return;
     setAuthor(window.localStorage.getItem(AUTHOR_KEY) ?? "");
+    setRole(window.localStorage.getItem(ROLE_KEY) ?? "");
   }, []);
 
   const rememberAuthor = useCallback((name: string) => {
@@ -63,16 +70,26 @@ export function PassOverlay({
     }
   }, []);
 
+  const rememberRole = useCallback((value: string) => {
+    setRole(value);
+    try {
+      window.localStorage.setItem(ROLE_KEY, value.trim());
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const closeAll = useCallback(() => {
     if (phase === "processing") return; // don't abandon mid-pipeline
-    reset();
+    abortRef.current = true; // backstop: ignore any late recorder result
+    cancel(); // discard the in-progress recording (detaches onstop, no blob)
     setPhase("idle");
     setText("");
     setTextMode(false);
     setBaton(null);
     submittingRef.current = false;
     onClose();
-  }, [phase, reset, onClose]);
+  }, [phase, cancel, onClose]);
 
   // Reset internal state each time the overlay opens.
   useEffect(() => {
@@ -82,6 +99,7 @@ export function PassOverlay({
       setText("");
       setTextMode(false);
       submittingRef.current = false;
+      abortRef.current = false;
     }
   }, [open]);
 
@@ -119,6 +137,7 @@ export function PassOverlay({
         const form = new FormData();
         form.append("team_slug", teamSlug);
         form.append("author_name", author.trim());
+        form.append("author_role", role.trim());
         form.append("duration_seconds", String(payload.duration));
         if (payload.audio) form.append("audio", payload.audio, "handoff.webm");
         if (payload.text) form.append("text", payload.text);
@@ -138,12 +157,13 @@ export function PassOverlay({
         submittingRef.current = false;
       }
     },
-    [teamSlug, author, reset]
+    [teamSlug, author, role, reset]
   );
 
-  // When a recording finishes, send it through the pipeline.
+  // When a recording finishes, send it through the pipeline — unless the user
+  // bailed out (abortRef), in which case a late onstop must be ignored.
   useEffect(() => {
-    if (status === "stopped" && blob && !submittingRef.current) {
+    if (status === "stopped" && blob && !submittingRef.current && !abortRef.current) {
       submit({ audio: blob, duration: seconds });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,6 +179,7 @@ export function PassOverlay({
 
   const handleStart = () => {
     if (!requireName()) return;
+    abortRef.current = false;
     start();
   };
 
@@ -229,12 +250,19 @@ export function PassOverlay({
                     : "Talk for up to two minutes. Rambling is welcome."}
                 </p>
 
-                <div className="mt-6 w-full max-w-xs">
+                <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
                   <Input
                     value={author}
                     onChange={(e) => rememberAuthor(e.target.value)}
                     placeholder="Your name (required)"
                     aria-required
+                    className="text-center"
+                    maxLength={40}
+                  />
+                  <Input
+                    value={role}
+                    onChange={(e) => rememberRole(e.target.value)}
+                    placeholder="Your role — e.g. Frontend, On-call (optional)"
                     className="text-center"
                     maxLength={40}
                   />
@@ -358,6 +386,7 @@ export function PassOverlay({
                 <BatonCard
                   card={baton.card!}
                   author={baton.author_name}
+                  role={baton.author_role}
                   createdAt={baton.created_at}
                   audioUrl={baton.audio_url}
                   durationSeconds={baton.duration_seconds}

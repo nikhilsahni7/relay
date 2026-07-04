@@ -159,7 +159,31 @@ export function useRecorder(maxSeconds = 120) {
     setLevels(levelsRef.current);
   }, [stop, teardown]);
 
+  /**
+   * Abort recording and DISCARD it — used when the user closes the overlay
+   * mid-record. We detach `onstop` first so the async stop never emits a blob
+   * (which would otherwise trigger the auto-submit effect and save silently).
+   */
+  const cancel = useCallback(() => {
+    const rec = recorderRef.current;
+    if (rec) {
+      rec.onstop = null;
+      if (rec.state !== "inactive") rec.stop();
+    }
+    recorderRef.current = null;
+    chunksRef.current = [];
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    teardown();
+    setStatus("idle");
+    setSeconds(0);
+    setBlob(null);
+    setError(null);
+    levelsRef.current = new Array(BAR_COUNT).fill(0);
+    setLevels(levelsRef.current);
+  }, [teardown]);
+
   useEffect(() => () => teardown(), [teardown]);
 
-  return { status, seconds, levels, blob, error, start, stop, reset };
+  return { status, seconds, levels, blob, error, start, stop, reset, cancel };
 }

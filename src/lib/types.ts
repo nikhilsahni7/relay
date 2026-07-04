@@ -17,6 +17,7 @@ export interface Baton {
   id: string;
   team_id: string;
   author_name: string;
+  author_role: string | null;
   audio_url: string | null;
   transcript: string | null;
   card: BatonCard | null;

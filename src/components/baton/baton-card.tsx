@@ -23,6 +23,7 @@ function formatDuration(secs?: number | null): string | null {
 export interface BatonCardProps {
   card: BatonCardData;
   author: string;
+  role?: string | null;
   createdAt: string;
   audioUrl?: string | null;
   durationSeconds?: number | null;
@@ -39,6 +40,7 @@ export interface BatonCardProps {
 export function BatonCard({
   card,
   author,
+  role,
   createdAt,
   audioUrl,
   durationSeconds,
@@ -76,7 +78,15 @@ export function BatonCard({
             {initials(author)}
           </span>
           <div>
-            <p className="text-sm font-medium">{author}</p>
+            <p className="text-sm font-medium">
+              {author}
+              {role ? (
+                <span className="font-normal text-muted-foreground">
+                  {" · "}
+                  {role}
+                </span>
+              ) : null}
+            </p>
             <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
               {timeAgo(createdAt)}
             </p>
