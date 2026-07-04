@@ -1,0 +1,51 @@
+---
+description: Relay design system — night-race art direction, type, motion
+globs: ["**/*.tsx", "**/*.css"]
+alwaysApply: false
+---
+
+# Relay design system — "night race"
+
+The metaphor is a relay race at night: warm near-black track, cream text,
+one ember-orange baton accent. Single dark theme only — never add light mode.
+
+## Color (already tokenized in globals.css — use semantic classes)
+- Surfaces: `bg-background` → `bg-card` → `bg-secondary` (increasing elevation)
+- Text: `text-foreground` (cream), `text-muted-foreground` (warm gray)
+- THE accent: ember (`text-ember`, `bg-primary`, `.text-ember-gradient`).
+  Use it sparingly — one ember element per view region. If everything glows,
+  nothing does.
+- Baton status colors, only for card items: `done`, `doing`, `blocked`,
+  `next`, `note` (e.g. `text-done`, `bg-blocked/10`)
+
+## Typography
+- Display/headlines: `font-display` (Instrument Serif). Italic `<em>` +
+  `.text-ember-gradient` for the one accent word in a headline.
+- Body/UI: default Geist Sans.
+- Labels/timestamps/metadata: `font-mono` (Geist Mono), uppercase,
+  `tracking-wider`, 10–12px. This mono-label pattern is a brand signature.
+- Never introduce other fonts or weights of Instrument Serif (400 only).
+
+## Motion rules (package: motion, import "motion/react")
+- Easing: `[0.22, 1, 0.36, 1]` (ease-out-quint feel) for entrances.
+- Durations: 0.4–0.7s entrances; 150–300ms hovers (Tailwind `transition-*`).
+- Entrances: fade + rise (`y: 16-24`) with stagger (~0.1s per sibling);
+  optionally `filter: blur(4px) -> 0` for the "assembling" feel.
+- Scroll reveals: `whileInView` + `viewport={{ once: true }}`.
+- Loops (waveform, traveling baton) must be subtle and slow; nothing bounces.
+- Respect the metaphor: things PASS left-to-right (batons travel, cards slide
+  in from the sender's side). Don't scale-pop UI in from nowhere.
+
+## Texture & depth
+- Cards: `border-border` + `bg-card/60-90`, hover -> `border-ember/40`.
+- Ember glow: `.glow-ember` or radial gradient halos ONLY behind the hero
+  card, the record button, and the playing recap. Max one glow per screen.
+- Film grain `.noise` overlay is global (in layout) — do not add per-page.
+- Dashed `.lane` line for track motifs.
+- Radius: `rounded-xl`/`rounded-2xl` for cards, `rounded-full` for pills.
+
+## Voice UI patterns
+- Recording state: ember pulse ring around the mic button + live waveform bars.
+- Playback state: same waveform in `done` green while recap audio plays.
+- Baton Card items always render as: colored dot + mono uppercase label +
+  sentence. Exactly like `baton-card-demo.tsx` — keep visual parity.

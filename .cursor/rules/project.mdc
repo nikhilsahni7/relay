@@ -1,0 +1,36 @@
+---
+description: Relay — project context, stack, and hard constraints
+alwaysApply: true
+---
+
+# Relay — project rule
+
+Relay is a voice-first handoff app built solo at RAISE Summit Hackathon 2026
+(Cursor track, ~22h deadline). Tagline: "Talk when you leave. Listen when you
+arrive." Full product plan: `project.md`. Feature spec and task briefs: `SPEC.md`.
+
+## Stack (do not deviate, do not add dependencies without asking)
+- Next.js 16 App Router + TypeScript, `src/` dir, `@/*` alias
+- Tailwind v4 (tokens in `src/app/globals.css` via `@theme inline`)
+- UI kit: hand-written shadcn-style components in `src/components/ui/`
+- Animation: `motion` package — import from `"motion/react"` (NOT "framer-motion")
+- Icons: `lucide-react` · Toasts: `sonner` (Toaster already in layout)
+- Data: Supabase (`src/lib/supabase.ts`), schema in `supabase/schema.sql`
+- AI: Groq (Whisper STT + Llama structuring), Gemini Flash TTS. Free tiers —
+  every external call needs retry/backoff and a fallback (see SPEC).
+- Package manager: bun (`bun add`, `bun dev`). npm is broken-slow on this machine.
+
+## Conventions
+- Server code (API keys!) only in route handlers under `src/app/api/*`.
+  NEVER expose GROQ_API_KEY / GEMINI_API_KEY / SERVICE_ROLE key to the client.
+- Types live in `src/lib/types.ts` (`BatonCard`, `Baton`, `Team`). Reuse them.
+- Components: server components by default; `"use client"` only when needed
+  (motion, mic, audio playback).
+- Errors surface as sonner toasts with a human sentence, never raw errors.
+- Every screen needs loading + empty + error states — judges will click fast.
+- No auth, no settings pages, no feature flags. Shareable URLs are the model.
+
+## Hackathon constraints
+- Everything must work on free tiers; assume 429s can happen and handle them.
+- Prefer editing existing files over creating parallel versions.
+- Keep commits small with descriptive messages (in-event history = proof of work).
