@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Mic, Ear, Link2, Rows3, Waypoints } from "lucide-react";
+import { Mic, Ear, Link2, Rows3, Sparkles, Waypoints } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Logo } from "@/components/brand/logo";
 import { BatonCard } from "@/components/baton/baton-card";
 import { PassOverlay } from "@/components/pass/pass-overlay";
 import { CatchBar } from "@/components/catch/catch-bar";
+import { AskPanel } from "@/components/ask/ask-panel";
 import { TrackCanvas } from "@/components/track/track-canvas";
 import { InsightsPanel } from "@/components/track/insights-panel";
 import { computeTrackInsights } from "@/lib/track-insights";
@@ -33,6 +34,7 @@ export function TrackClient({
   const router = useRouter();
   const [passOpen, setPassOpen] = useState(initialPassOpen);
   const [catchOpen, setCatchOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const [view, setView] = useState<TrackView>("canvas");
 
   const insights = useMemo(() => computeTrackInsights(batons), [batons]);
@@ -75,7 +77,14 @@ export function TrackClient({
           <h1 className="font-display text-4xl leading-tight sm:text-5xl">
             {team.name}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setAskOpen(true)}
+              disabled={batons.length === 0}
+            >
+              <Sparkles className="size-4" /> Ask
+            </Button>
             <Button
               variant="secondary"
               onClick={() => setCatchOpen(true)}
@@ -170,6 +179,13 @@ export function TrackClient({
         teamSlug={team.slug}
         open={catchOpen}
         onClose={() => setCatchOpen(false)}
+      />
+
+      <AskPanel
+        teamSlug={team.slug}
+        batons={batons}
+        open={askOpen}
+        onClose={() => setAskOpen(false)}
       />
     </main>
   );

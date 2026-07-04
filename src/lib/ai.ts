@@ -312,6 +312,119 @@ export async function recap(batons: RecapBaton[]): Promise<string> {
 }
 
 // --------------------------------------------------------------------------
+// Ask — grounded Q&A over a team's handoffs
+// --------------------------------------------------------------------------
+
+const ASK_SYSTEM = `You answer a teammate's question about their team's work, using ONLY the handoffs provided.
+
+You are given the team's handoffs in order (oldest first). Each is numbered and
+has an author, a summary, and status items (done / doing / blocked / next / note).
+
+Return ONLY JSON of exactly this shape:
+{
+  "answer": "a direct, warm, spoken-style answer in 1-3 sentences",
+  "handoff": <the number of the single most relevant handoff, or null>
+}
+
+Rules:
+- Ground every claim in the handoffs. Never invent facts, names, status, or dates.
+- If the answer isn't in the handoffs, say so plainly and set "handoff" to null.
+- Lead with the answer. No preamble, no markdown, no bullet lists — spoken prose.
+- When several handoffs are relevant, prefer the most recent one.
+- Name who/when when it helps ("Ana flagged the deploy is blocked on the API key").
+- "handoff" must be a number that actually appears above, or null.`;
+
+export interface AskResult {
+  answer: string;
+  /** 1-based index into the provided batons the answer draws from, or null. */
+  handoffIndex: number | null;
+}
+
+type AskBaton = Pick<
+  Baton,
+  "author_name" | "author_role" | "card" | "created_at"
+>;
+
+/**
+ * Answer a free-text question grounded in a team's handoffs. Returns the answer
+ * plus which handoff it leans on (so the UI can cite the source baton). Tries
+ * the 70B model with one retry, then falls back to the fast 8B model.
+ */
+export async function ask(
+  question: string,
+  batons: AskBaton[]
+): Promise<AskResult> {
+  const clean = question.trim();
+  if (!clean) {
+    return { answer: "Ask me anything about the team's work.", handoffIndex: null };
+  }
+  if (batons.length === 0) {
+    return {
+      answer:
+        "There are no batons on this track yet, so there's nothing to answer from.",
+      handoffIndex: null,
+    };
+  }
+
+  const context = serializeBatons(batons);
+  const messages = [
+    { role: "system", content: ASK_SYSTEM },
+    {
+      role: "user",
+      content: `Handoffs:\n"""\n${context}\n"""\n\nQuestion: ${clean}`,
+    },
+  ];
+
+  const call = async (model: string): Promise<AskResult> => {
+    const res = await fetch(`${GROQ_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${groqKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+        messages,
+      }),
+    });
+    if (!res.ok) {
+      throw new GroqError(
+        res.status,
+        `Ask failed (${res.status})`,
+        parseRetryAfter(res)
+      );
+    }
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const parsed = JSON.parse(
+      data.choices?.[0]?.message?.content ?? "{}"
+    ) as { answer?: unknown; handoff?: unknown };
+
+    const answer =
+      asString(parsed.answer) || "I couldn't find that in the handoffs.";
+    let handoffIndex: number | null = null;
+    const n =
+      typeof parsed.handoff === "number"
+        ? Math.round(parsed.handoff)
+        : Number(parsed.handoff);
+    if (Number.isFinite(n) && n >= 1 && n <= batons.length) {
+      handoffIndex = n;
+    }
+    return { answer, handoffIndex };
+  };
+
+  try {
+    return await withRetry(() => call(STRUCTURE_MODEL));
+  } catch (err) {
+    if (!isRetryable(err)) throw err;
+    return await call(STRUCTURE_FALLBACK_MODEL);
+  }
+}
+
+// --------------------------------------------------------------------------
 // Text-to-speech (Gemini) — optional; returns null to trigger the client's
 // speechSynthesis fallback when no key is set or the call fails.
 // --------------------------------------------------------------------------
