@@ -81,10 +81,13 @@ export function BatonCardDemo() {
 
   return (
     <div className="relative">
-      {/* ember halo behind the card — the one glow allowed in the hero */}
+      {/* ember halo behind the card — the one glow allowed in the hero. It
+          breathes slowly so the focal element feels alive. */}
       <div
         aria-hidden
-        className="absolute -inset-12 -z-10 rounded-full opacity-40 blur-3xl"
+        className={`absolute -inset-12 -z-10 rounded-full blur-3xl ${
+          reduce ? "opacity-40" : "animate-breathe"
+        }`}
         style={{
           background:
             "radial-gradient(closest-side, color-mix(in srgb, var(--ember) 45%, transparent), transparent 70%)",

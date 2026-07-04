@@ -134,12 +134,30 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Ember text gradient for accent words */
+/* Ember text gradient for accent words. The gradient is oversized and slowly
+   panned so accent words feel like embers catching light — subtle, never flashy. */
 .text-ember-gradient {
-  background: linear-gradient(100deg, var(--ember-soft), var(--ember-deep));
+  background: linear-gradient(
+    100deg,
+    var(--ember-soft),
+    var(--ember-deep),
+    var(--ember-soft)
+  );
+  background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: gradient-pan 7s ease-in-out infinite;
+}
+
+@keyframes gradient-pan {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
 }
 
 /* Soft ember glow used behind cards and the baton */
@@ -257,6 +275,52 @@ body {
 }
 .animate-float {
   animation: float-y 7s ease-in-out infinite;
+}
+
+/* Breathing glow — a slow heartbeat for the single focal halo in a view. */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.06);
+  }
+}
+.animate-breathe {
+  animation: breathe 5.5s ease-in-out infinite;
+}
+
+/* Floating embers — motes rising off an unseen fire. Each particle sets its
+   own --drift, --dur, --delay, --ember-opacity via inline style. This is the
+   atmosphere that makes the night-race world feel warm and alive. */
+.ember-mote {
+  position: absolute;
+  bottom: -12px;
+  border-radius: 9999px;
+  background: var(--ember-soft);
+  box-shadow: 0 0 8px 1px color-mix(in srgb, var(--ember) 60%, transparent);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: ember-rise var(--dur, 14s) linear var(--delay, 0s) infinite;
+}
+@keyframes ember-rise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.9);
+    opacity: 0;
+  }
+  12% {
+    opacity: var(--ember-opacity, 0.5);
+  }
+  85% {
+    opacity: var(--ember-opacity, 0.5);
+  }
+  100% {
+    transform: translate3d(var(--drift, 16px), -102vh, 0) scale(0.5);
+    opacity: 0;
+  }
 }
 
 /* Accessibility: judges notice this. Honor the OS reduced-motion setting by

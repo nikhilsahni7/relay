@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Logo, BatonMark } from "@/components/brand/logo";
 import { BatonCardDemo } from "./baton-card-demo";
 import { RelayTrack } from "./relay-track";
+import { Embers } from "./embers";
+import { CountUp } from "./count-up";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -97,6 +99,7 @@ export function Landing() {
 
   return (
     <>
+      <Embers />
       <Nav />
 
       <main className="relative mx-auto w-full max-w-6xl px-6">
@@ -229,7 +232,9 @@ export function Landing() {
                     <Mic className="size-4" />
                   </span>
                   <div>
-                    <p className="font-display text-2xl leading-none">60s</p>
+                    <p className="font-display text-2xl leading-none">
+                      <CountUp to={60} suffix="s" />
+                    </p>
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                       to record
                     </p>
@@ -241,7 +246,9 @@ export function Landing() {
                     <Ear className="size-4" />
                   </span>
                   <div>
-                    <p className="font-display text-2xl leading-none">20s</p>
+                    <p className="font-display text-2xl leading-none">
+                      <CountUp to={20} suffix="s" />
+                    </p>
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                       to catch up
                     </p>
@@ -309,7 +316,7 @@ export function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.5, delay: i * 0.12, ease: EASE }}
-                className="group relative rounded-2xl border border-border bg-card/60 p-7 backdrop-blur-sm transition-colors duration-300 hover:border-ember/40"
+                className="group relative rounded-2xl border border-border bg-card/60 p-7 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-ember/40 hover:shadow-[0_16px_50px_-24px_var(--ember)]"
               >
                 <div className="flex items-center justify-between">
                   <span className="flex size-9 items-center justify-center rounded-full border border-border bg-background font-mono text-xs text-ember">
