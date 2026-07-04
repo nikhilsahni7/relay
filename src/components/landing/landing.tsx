@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Play, Mic, Ear } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Logo, BatonMark } from "@/components/brand/logo";
 import { BatonCardDemo } from "./baton-card-demo";
 import { RelayTrack } from "./relay-track";
 
@@ -64,12 +65,7 @@ function Nav() {
       }`}
     >
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-        <Link
-          href="/"
-          className="font-display text-2xl italic tracking-tight transition-opacity hover:opacity-80"
-        >
-          Relay<span className="text-ember">.</span>
-        </Link>
+        <Logo />
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
             <a
@@ -374,6 +370,7 @@ export function Landing() {
 
         {/* ------------------------------------------------ footer */}
         <footer className="flex flex-col items-center gap-3 border-t border-border py-14 text-center">
+          <BatonMark className="size-6 opacity-90" />
           <p className="font-display text-xl italic text-foreground/80">
             Talk when you leave. Listen when you arrive.
           </p>
