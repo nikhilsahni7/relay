@@ -40,8 +40,17 @@ export function PassOverlay({
 }: PassOverlayProps) {
   const reduce = useReducedMotion();
   const recorder = useRecorder(MAX_SECONDS);
-  const { status, seconds, levels, blob, error, start, stop, reset, cancel } =
-    recorder;
+  const {
+    status,
+    seconds,
+    levelsRef,
+    blob,
+    error,
+    start,
+    stop,
+    reset,
+    cancel,
+  } = recorder;
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [author, setAuthor] = useState("");
@@ -213,7 +222,10 @@ export function PassOverlay({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-background/92 px-6 backdrop-blur-md"
+        // Near-opaque backdrop instead of backdrop-blur: animating opacity on a
+        // full-viewport backdrop-filter forces a repaint of the whole page
+        // every frame and makes the overlay open visibly janky on weaker GPUs.
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-background/97 px-6"
       >
         {/* close */}
         {phase !== "processing" ? (
@@ -322,7 +334,7 @@ export function PassOverlay({
                   Listening
                 </p>
                 <div className="mt-8">
-                  <Waveform levels={levels} />
+                  <Waveform levelsRef={levelsRef} />
                 </div>
                 <p className="mt-8 font-mono text-2xl tabular-nums text-foreground">
                   {fmt(seconds)}
@@ -430,23 +442,62 @@ function RecordButton({
   );
 }
 
-/** Center-mirrored live waveform driven by the recorder's level buffer. */
-function Waveform({ levels }: { levels: number[] }) {
+/**
+ * Center-mirrored live waveform. Samples the recorder's level ref on its own
+ * rAF loop and paints a <canvas>, so the 60fps meter never re-renders React.
+ */
+function Waveform({
+  levelsRef,
+}: {
+  levelsRef: React.RefObject<number[]>;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    ctx.scale(dpr, dpr);
+
+    const ember = getComputedStyle(document.documentElement)
+      .getPropertyValue("--ember")
+      .trim();
+
+    let raf = 0;
+    const draw = () => {
+      const levels = levelsRef.current ?? [];
+      const n = levels.length || 1;
+      const barW = 3;
+      const gap = (cssW - n * barW) / Math.max(1, n - 1);
+      ctx.clearRect(0, 0, cssW, cssH);
+      for (let i = 0; i < n; i++) {
+        const amp = levels[i];
+        const h = Math.max(3, amp * cssH);
+        const x = i * (barW + gap);
+        ctx.globalAlpha = 0.35 + amp * 0.65;
+        ctx.fillStyle = ember || "#ff8843";
+        ctx.beginPath();
+        ctx.roundRect(x, (cssH - h) / 2, barW, h, 1.5);
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [levelsRef]);
+
   return (
-    <div
-      className="flex h-24 items-center justify-center gap-[3px]"
+    <canvas
+      ref={canvasRef}
+      className="h-24 w-[330px] max-w-full"
       aria-hidden
-    >
-      {levels.map((amp, i) => (
-        <span
-          key={i}
-          className="w-[3px] rounded-full bg-ember"
-          style={{
-            height: `${Math.max(3, amp * 96)}px`,
-            opacity: 0.35 + amp * 0.65,
-          }}
-        />
-      ))}
-    </div>
+    />
   );
 }

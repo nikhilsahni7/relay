@@ -30,9 +30,6 @@ function pickMimeType(): string {
 export function useRecorder(maxSeconds = 120) {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [seconds, setSeconds] = useState(0);
-  const [levels, setLevels] = useState<number[]>(() =>
-    new Array(BAR_COUNT).fill(0)
-  );
   const [blob, setBlob] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +68,6 @@ export function useRecorder(maxSeconds = 120) {
     setBlob(null);
     setSeconds(0);
     levelsRef.current = new Array(BAR_COUNT).fill(0);
-    setLevels(levelsRef.current);
     setStatus("requesting");
 
     let stream: MediaStream;
@@ -132,10 +128,11 @@ export function useRecorder(maxSeconds = 120) {
       }
       const rms = Math.sqrt(sum / buffer.length);
       const amp = Math.min(1, rms * 2.4);
+      // Mutate the ref only — the Waveform component samples it on its own
+      // rAF loop, so the level meter never re-renders the whole overlay.
       const next = levelsRef.current.slice(1);
       next.push(amp);
       levelsRef.current = next;
-      setLevels(next);
 
       const elapsed = (performance.now() - startedAtRef.current) / 1000;
       setSeconds(Math.floor(elapsed));
@@ -156,7 +153,6 @@ export function useRecorder(maxSeconds = 120) {
     setBlob(null);
     setError(null);
     levelsRef.current = new Array(BAR_COUNT).fill(0);
-    setLevels(levelsRef.current);
   }, [stop, teardown]);
 
   /**
@@ -180,10 +176,19 @@ export function useRecorder(maxSeconds = 120) {
     setBlob(null);
     setError(null);
     levelsRef.current = new Array(BAR_COUNT).fill(0);
-    setLevels(levelsRef.current);
   }, [teardown]);
 
   useEffect(() => () => teardown(), [teardown]);
 
-  return { status, seconds, levels, blob, error, start, stop, reset, cancel };
+  return {
+    status,
+    seconds,
+    levelsRef,
+    blob,
+    error,
+    start,
+    stop,
+    reset,
+    cancel,
+  };
 }

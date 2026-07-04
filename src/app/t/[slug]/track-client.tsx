@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Mic, Ear, Link2 } from "lucide-react";
+import { Mic, Ear, Link2, Rows3, Waypoints } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,15 @@ import { Logo } from "@/components/brand/logo";
 import { BatonCard } from "@/components/baton/baton-card";
 import { PassOverlay } from "@/components/pass/pass-overlay";
 import { CatchBar } from "@/components/catch/catch-bar";
+import { TrackCanvas } from "@/components/track/track-canvas";
+import { InsightsPanel } from "@/components/track/insights-panel";
+import { computeTrackInsights } from "@/lib/track-insights";
+import { cn } from "@/lib/utils";
 import type { Baton, Team } from "@/lib/types";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+type TrackView = "canvas" | "list";
 
 export function TrackClient({
   team,
@@ -27,6 +33,9 @@ export function TrackClient({
   const router = useRouter();
   const [passOpen, setPassOpen] = useState(initialPassOpen);
   const [catchOpen, setCatchOpen] = useState(false);
+  const [view, setView] = useState<TrackView>("canvas");
+
+  const insights = useMemo(() => computeTrackInsights(batons), [batons]);
 
   const copyLink = async () => {
     try {
@@ -80,37 +89,73 @@ export function TrackClient({
           </div>
         </div>
         <div className="mt-6 lane w-full" aria-hidden />
+
+        {batons.length > 0 ? (
+          <InsightsPanel insights={insights} batonCount={batons.length} />
+        ) : null}
       </section>
 
       {/* timeline */}
-      <section className="py-12">
+      <section className="pb-16 pt-6">
         {batons.length === 0 ? (
           <EmptyState onPass={() => setPassOpen(true)} />
         ) : (
-          <div className="flex flex-col items-center gap-6">
-            {batons.map((baton, i) => (
-              <motion.div
-                key={baton.id}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.5, ease: EASE }}
-                className="w-full max-w-md"
+          <>
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                {batons.length} baton{batons.length === 1 ? "" : "s"} passed
+              </p>
+              <div
+                role="tablist"
+                aria-label="Timeline view"
+                className="flex items-center gap-0.5 rounded-full border border-border bg-card/70 p-0.5"
               >
-                <BatonCard
-                  card={
-                    baton.card ?? { summary: "", items: [], links: [] }
-                  }
-                  author={baton.author_name}
-                  role={baton.author_role}
-                  createdAt={baton.created_at}
-                  audioUrl={baton.audio_url}
-                  durationSeconds={baton.duration_seconds}
-                  batonNumber={batons.length - i}
-                />
-              </motion.div>
-            ))}
-          </div>
+                <ViewTab
+                  active={view === "canvas"}
+                  onClick={() => setView("canvas")}
+                  label="Canvas view"
+                >
+                  <Waypoints className="size-3.5" /> Canvas
+                </ViewTab>
+                <ViewTab
+                  active={view === "list"}
+                  onClick={() => setView("list")}
+                  label="List view"
+                >
+                  <Rows3 className="size-3.5" /> List
+                </ViewTab>
+              </div>
+            </div>
+
+            {view === "canvas" ? (
+              <TrackCanvas batons={batons} openItems={insights.openItems} />
+            ) : (
+              <div className="mt-6 flex flex-col items-center gap-6">
+                {batons.map((baton, i) => (
+                  <motion.div
+                    key={baton.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.5, ease: EASE }}
+                    className="w-full max-w-md"
+                  >
+                    <BatonCard
+                      card={
+                        baton.card ?? { summary: "", items: [], links: [] }
+                      }
+                      author={baton.author_name}
+                      role={baton.author_role}
+                      createdAt={baton.created_at}
+                      audioUrl={baton.audio_url}
+                      durationSeconds={baton.duration_seconds}
+                      batonNumber={batons.length - i}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -127,6 +172,36 @@ export function TrackClient({
         onClose={() => setCatchOpen(false)}
       />
     </main>
+  );
+}
+
+function ViewTab({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+        active
+          ? "bg-secondary text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
