@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Play, Mic, Ear } from "lucide-react";
+import { ArrowRight, Play, Mic, Ear, Sparkles, Waypoints } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Logo, BatonMark } from "@/components/brand/logo";
@@ -43,6 +43,26 @@ const COMPARISON = [
   { tool: "Handoff docs", record: "Tedious to write", consume: "Fast to skim" },
   { tool: "Standups", record: "Same room, same time", consume: "Same room, same time" },
   { tool: "Relay", record: "60s of talking", consume: "20s of listening", us: true },
+];
+
+// Beyond the pass/catch loop: the three capabilities no note, doc, or video
+// recorder gives you, because Relay's handoffs are structured data.
+const DIFFERENTIATORS = [
+  {
+    icon: <Ear className="size-4" />,
+    title: "Catch me up",
+    body: "One button, one voice recap of everything since you left — compressed across every handoff, not just the last one. Docs can't talk; Loom can't summarize.",
+  },
+  {
+    icon: <Sparkles className="size-4" />,
+    title: "Ask the track",
+    body: "\u201CWhat's blocked right now?\u201D — answered only from your team's handoffs, with the source baton cited and expandable. No digging through threads.",
+  },
+  {
+    icon: <Waypoints className="size-4" />,
+    title: "The living canvas",
+    body: "The whole relay on one pannable map: who passed what, which tasks are still open, and what got dropped between handoffs — spotted automatically.",
+  },
 ];
 
 const fadeUp = {
@@ -216,16 +236,16 @@ export function Landing() {
               transition={{ duration: 0.6, ease: EASE }}
             >
               <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-ember">
-                Why it's different
+                Why it&apos;s different
               </p>
               <h2 className="font-display mt-3 text-3xl leading-tight sm:text-4xl">
                 Every tool makes one side cheap by making the{" "}
                 <em className="text-ember-gradient">other expensive</em>.
               </h2>
               <p className="mt-4 max-w-md text-muted-foreground">
-                Relay is the only one that's cheap on both ends. Talking is the
-                fastest way to get context out of your head; listening is the
-                fastest way to get it into someone else's.
+                Relay is the only one that&apos;s cheap on both ends. Talking
+                is the fastest way to get context out of your head; listening
+                is the fastest way to get it into someone else&apos;s.
               </p>
 
               <div className="mt-8 flex items-center gap-8">
@@ -293,6 +313,32 @@ export function Landing() {
               ))}
             </motion.div>
           </div>
+
+          {/* what no other tool has */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
+            className="mt-10 grid gap-4 md:grid-cols-3"
+          >
+            {DIFFERENTIATORS.map((d) => (
+              <div
+                key={d.title}
+                className="group rounded-2xl border border-border bg-card/40 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-ember/40"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-ember/12 text-ember">
+                    {d.icon}
+                  </span>
+                  <h3 className="font-medium">{d.title}</h3>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  {d.body}
+                </p>
+              </div>
+            ))}
+          </motion.div>
         </section>
 
         {/* ------------------------------------------------ steps */}
@@ -302,7 +348,7 @@ export function Landing() {
               How it works
             </p>
             <h2 className="font-display mt-3 text-3xl sm:text-4xl">
-              Three moves. That's the whole app.
+              Three moves. That&apos;s the whole app.
             </h2>
           </div>
           <div className="relative grid gap-5 md:grid-cols-3">

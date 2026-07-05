@@ -57,6 +57,9 @@ export function TrackCanvas({
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewportW, setViewportW] = useState(0);
   const [expanded, setExpanded] = useState<Baton | null>(null);
+  // Id of a baton that just landed (passed while this canvas was mounted) —
+  // drives the short ember-streak + glow arrival animation.
+  const [arrivedId, setArrivedId] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const el = viewportRef.current;
@@ -225,6 +228,33 @@ export function TrackCanvas({
     focusLatest(vertical ? 0.9 : 1);
   }, [viewportW, positions, vertical, focusLatest]);
 
+  // A baton just landed (passed while this canvas is mounted): glide the
+  // camera to it and play a short arrival animation — ember streak along the
+  // last connector, then the node pops in. ~1.2s total, then cleans up.
+  const prevLatest = useRef<string | null>(null);
+  useEffect(() => {
+    const latest = chrono.length ? chrono[chrono.length - 1].id : null;
+    const isNew =
+      prevLatest.current !== null && latest !== null && latest !== prevLatest.current;
+    prevLatest.current = latest;
+    if (!isNew) return;
+
+    setArrivedId(latest);
+    const w = worldRef.current;
+    if (w) {
+      w.style.transition = "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)";
+    }
+    focusLatest(1);
+    const clearTransition = setTimeout(() => {
+      if (worldRef.current) worldRef.current.style.transition = "";
+    }, 650);
+    const clearArrival = setTimeout(() => setArrivedId(null), 1500);
+    return () => {
+      clearTimeout(clearTransition);
+      clearTimeout(clearArrival);
+    };
+  }, [chrono, focusLatest]);
+
   // Re-fit when the layout flips between orientations.
   const prevVertical = useRef(vertical);
   useEffect(() => {
@@ -341,7 +371,7 @@ export function TrackCanvas({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="relative h-[520px] w-full cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-border bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] [background-size:26px_26px] active:cursor-grabbing sm:h-[560px]"
+        className="relative h-[520px] w-full cursor-grab touch-none select-none overflow-hidden rounded-2xl border border-border bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] bg-size-[26px_26px] active:cursor-grabbing sm:h-[560px]"
         role="application"
         aria-label="Baton timeline canvas — drag to pan, scroll or pinch to zoom"
       >
@@ -379,6 +409,47 @@ export function TrackCanvas({
                 />
               );
             })}
+
+            {/* arrival streak: an ember draws the last connector, then fades */}
+            {arrivedId && paths.length > 0 ? (
+              <g pointerEvents="none">
+                <motion.path
+                  d={paths[paths.length - 1]}
+                  fill="none"
+                  stroke="var(--ember)"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0, opacity: 0.9 }}
+                  animate={{ pathLength: 1, opacity: [0.9, 0.9, 0] }}
+                  transition={{
+                    pathLength: { duration: 0.8, ease: EASE },
+                    opacity: { duration: 1.3, times: [0, 0.65, 1] },
+                  }}
+                />
+                <circle
+                  r={4.5}
+                  fill="var(--ember)"
+                  style={{ filter: "drop-shadow(0 0 10px var(--ember))" }}
+                >
+                  <animateMotion
+                    dur="0.8s"
+                    fill="freeze"
+                    calcMode="spline"
+                    keyPoints="0;1"
+                    keyTimes="0;1"
+                    keySplines="0.22 1 0.36 1"
+                    path={paths[paths.length - 1]}
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="1;1;0"
+                    keyTimes="0;0.7;1"
+                    dur="1.2s"
+                    fill="freeze"
+                  />
+                </circle>
+              </g>
+            ) : null}
           </svg>
 
           {/* start flag */}
@@ -400,6 +471,7 @@ export function TrackCanvas({
               index={i}
               pos={positions[i]}
               isLatest={i === chrono.length - 1}
+              justArrived={baton.id === arrivedId}
               openCount={openByBaton.get(baton.id) ?? 0}
               onOpen={openBaton}
             />
@@ -452,6 +524,7 @@ const CanvasNode = memo(function CanvasNode({
   index,
   pos,
   isLatest,
+  justArrived = false,
   openCount,
   onOpen,
 }: {
@@ -459,6 +532,7 @@ const CanvasNode = memo(function CanvasNode({
   index: number;
   pos: NodePos;
   isLatest: boolean;
+  justArrived?: boolean;
   openCount: number;
   onOpen: (baton: Baton) => void;
 }) {
@@ -474,9 +548,17 @@ const CanvasNode = memo(function CanvasNode({
     <motion.button
       type="button"
       onClick={() => onOpen(baton)}
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={
+        justArrived ? { opacity: 0, scale: 0.55 } : { opacity: 0, scale: 0.9 }
+      }
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, ease: EASE, delay: Math.min(index * 0.06, 0.5) }}
+      transition={
+        justArrived
+          ? // Land after the ember streak reaches the node; a soft spring so
+            // the settle reads as a catch, not a snap.
+            { type: "spring", stiffness: 240, damping: 20, delay: 0.55 }
+          : { duration: 0.4, ease: EASE, delay: Math.min(index * 0.06, 0.5) }
+      }
       className={cn(
         "group absolute flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border bg-card/95 p-3 text-left backdrop-blur transition-colors",
         "cursor-pointer hover:border-ember/50",
@@ -489,7 +571,7 @@ const CanvasNode = memo(function CanvasNode({
     >
       {/* header */}
       <span className="flex items-center gap-2">
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ember-soft to-ember-deep text-[10px] font-medium text-primary-foreground">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-ember-soft to-ember-deep text-[10px] font-medium text-primary-foreground">
           {baton.author_name.trim().charAt(0).toUpperCase() || "?"}
         </span>
         <span className="min-w-0">
