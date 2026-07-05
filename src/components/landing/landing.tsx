@@ -7,6 +7,7 @@ import { ArrowRight, Play, Mic, Ear } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Logo, BatonMark } from "@/components/brand/logo";
+import { GitHubMark } from "@/components/brand/github-mark";
 import { BatonCardDemo } from "./baton-card-demo";
 import { RelayTrack } from "./relay-track";
 import { Embers } from "./embers";
@@ -71,11 +72,12 @@ function Nav() {
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
             <a
-              href="https://github.com/nikhil-sahni"
+              href="https://github.com/nikhilsahni7/relay"
               target="_blank"
               rel="noreferrer"
+              aria-label="Relay on GitHub"
             >
-              GitHub
+              <GitHubMark className="size-4" /> GitHub
             </a>
           </Button>
           <Button variant="outline" size="sm" asChild>
@@ -274,7 +276,7 @@ export function Landing() {
                   key={row.tool}
                   className={`grid grid-cols-[1.2fr_1fr_1fr] items-center gap-2 px-5 py-3.5 text-sm transition-colors ${
                     row.us
-                      ? "bg-primary/[0.06] text-foreground"
+                      ? "bg-primary/6 text-foreground"
                       : "text-muted-foreground"
                   }`}
                 >

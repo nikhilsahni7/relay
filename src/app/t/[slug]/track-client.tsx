@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Mic, Ear, Link2, Rows3, Sparkles, Waypoints } from "lucide-react";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
+import { GitHubMark } from "@/components/brand/github-mark";
 import { BatonCard } from "@/components/baton/baton-card";
 import { PassOverlay } from "@/components/pass/pass-overlay";
 import { CatchBar } from "@/components/catch/catch-bar";
@@ -39,6 +40,30 @@ export function TrackClient({
 
   const insights = useMemo(() => computeTrackInsights(batons), [batons]);
 
+  // Keyboard shortcuts: R = pass the baton, C = catch me up. Skipped while
+  // typing or when any overlay is already open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) {
+        return;
+      }
+      if (passOpen || catchOpen || askOpen) return;
+      const key = e.key.toLowerCase();
+      if (key === "r") {
+        e.preventDefault();
+        setPassOpen(true);
+      } else if (key === "c" && batons.length > 0) {
+        e.preventDefault();
+        setCatchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [passOpen, catchOpen, askOpen, batons.length]);
+
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.origin + `/t/${team.slug}`);
@@ -64,9 +89,21 @@ export function TrackClient({
     <main className="relative mx-auto w-full max-w-3xl px-6">
       <header className="flex items-center justify-between py-6">
         <Logo />
-        <Button variant="ghost" size="sm" onClick={copyLink}>
-          <Link2 className="size-3.5" /> Copy link
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" asChild>
+            <a
+              href="https://github.com/nikhilsahni7/relay"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Relay on GitHub"
+            >
+              <GitHubMark className="size-3.5" /> GitHub
+            </a>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={copyLink}>
+            <Link2 className="size-3.5" /> Copy link
+          </Button>
+        </div>
       </header>
 
       <section className="pt-8">
@@ -89,13 +126,22 @@ export function TrackClient({
               variant="secondary"
               onClick={() => setCatchOpen(true)}
               disabled={batons.length === 0}
+              title="Shortcut: C"
             >
               <Ear className="size-4" /> Catch me up
             </Button>
-            <Button onClick={() => setPassOpen(true)}>
+            <Button onClick={() => setPassOpen(true)} title="Shortcut: R">
               <Mic className="size-4" /> Pass the baton
             </Button>
           </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Greeting teamSlug={team.slug} batons={batons} />
+          <p className="mt-3 hidden items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60 sm:flex">
+            <Kbd>R</Kbd> pass
+            <span aria-hidden>·</span>
+            <Kbd>C</Kbd> catch
+          </p>
         </div>
         <div className="mt-6 lane w-full" aria-hidden />
 
@@ -191,6 +237,75 @@ export function TrackClient({
   );
 }
 
+/**
+ * Time-aware greeting: "Good morning — 3 batons passed while you were away."
+ * Rendered only on the client (after mount) so the hour and localStorage read
+ * never mismatch the server render.
+ */
+function Greeting({
+  teamSlug,
+  batons,
+}: {
+  teamSlug: string;
+  batons: Baton[];
+}) {
+  const [text, setText] = useState<string | null>(null);
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    const salute =
+      hour < 5
+        ? "Burning the midnight oil"
+        : hour < 12
+          ? "Good morning"
+          : hour < 18
+            ? "Good afternoon"
+            : "Good evening";
+
+    let since: string | null = null;
+    try {
+      since = localStorage.getItem(`relay:lastVisit:${teamSlug}`);
+    } catch {
+      since = null;
+    }
+
+    const fresh = since
+      ? batons.filter((b) => b.created_at > since).length
+      : batons.length;
+
+    if (batons.length === 0) {
+      setText(`${salute} — the track is ready for its first baton.`);
+    } else if (fresh === 0) {
+      setText(`${salute} — you're all caught up.`);
+    } else {
+      setText(
+        `${salute} — ${fresh} baton${fresh === 1 ? "" : "s"} passed while you were away.`
+      );
+    }
+  }, [teamSlug, batons]);
+
+  if (!text) return <div className="mt-3 h-5" aria-hidden />;
+
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className="mt-3 text-sm text-muted-foreground"
+    >
+      {text}
+    </motion.p>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+      {children}
+    </kbd>
+  );
+}
+
 function ViewTab({
   active,
   onClick,
@@ -228,7 +343,7 @@ function EmptyState({ onPass }: { onPass: () => void }) {
         <div className="lane absolute top-1/2 w-full" aria-hidden />
         <div
           aria-hidden
-          className="absolute left-1/2 top-1/2 h-3 w-12 -translate-x-1/2 -translate-y-1/2 rotate-[8deg] rounded-full bg-gradient-to-r from-ember-soft to-ember-deep opacity-90 shadow-[0_0_24px_-4px_var(--ember)]"
+          className="absolute left-1/2 top-1/2 h-3 w-12 -translate-x-1/2 -translate-y-1/2 rotate-[8deg] rounded-full bg-linear-to-r from-ember-soft to-ember-deep opacity-90 shadow-[0_0_24px_-4px_var(--ember)]"
         />
       </div>
       <h2 className="font-display mt-8 text-2xl">The track is waiting.</h2>
